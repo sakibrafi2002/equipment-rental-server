@@ -58,3 +58,21 @@ export async function verifyToken(
     res.status(401).json({ message: "Unauthorized: invalid or expired token" });
   }
 }
+
+function requireRoles(...roles: Role[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+    if (!roles.includes(req.user.role)) {
+      res.status(403).json({ message: "Forbidden: you do not have access" });
+      return;
+    }
+    next();
+  };
+}
+
+export const verifyRenter = requireRoles("customer");
+export const verifyOwner = requireRoles("owner");
+export const verifyAdmin = requireRoles("admin");
