@@ -130,6 +130,15 @@ router.get("/featured", async (_req, res) => {
   res.json(items);
 });
 
+// Owner: all of my equipment, any status
+router.get("/mine", verifyToken, verifyOwner, async (req, res) => {
+  const items = await equipmentCollection()
+    .find({ "owner.email": req.user!.email })
+    .sort({ createdAt: -1 })
+    .toArray();
+  res.json(items);
+});
+
 // Logged-in users: details of one item
 router.get("/:id", verifyToken, async (req, res) => {
   const id = toObjectId(req.params.id);
@@ -152,6 +161,58 @@ router.get("/:id", verifyToken, async (req, res) => {
   }
 
   res.json(item);
+});
+
+// Owner (own items) or admin (any item): update equipment
+router.put("/:id", verifyToken, verifyOwnerOrAdmin, async (req, res) => {
+  const id = toObjectId(req.params.id);
+  if (!id) {
+    res.status(400).json({ message: "Invalid equipment id." });
+    return;
+  }
+
+  const result = validateEquipmentInput(req.body ?? {});
+  if (!result.ok) {
+    res.status(400).json({ message: result.error });
+    return;
+  }
+
+  const item = await equipmentCollection().findOne({ _id: id });
+  if (!item) {
+    res.status(404).json({ message: "Equipment not found." });
+    return;
+  }
+
+  if (req.user!.role === "owner" && item.owner.email !== req.user!.email) {
+    res.status(403).json({ message: "You can only update your own equipment." });
+    return;
+  }
+
+  await equipmentCollection().updateOne({ _id: id }, { $set: result.data });
+  res.json({ message: "Equipment updated." });
+});
+
+// Owner (own items) or admin (any item): delete equipment
+router.delete("/:id", verifyToken, verifyOwnerOrAdmin, async (req, res) => {
+  const id = toObjectId(req.params.id);
+  if (!id) {
+    res.status(400).json({ message: "Invalid equipment id." });
+    return;
+  }
+
+  const item = await equipmentCollection().findOne({ _id: id });
+  if (!item) {
+    res.status(404).json({ message: "Equipment not found." });
+    return;
+  }
+
+  if (req.user!.role === "owner" && item.owner.email !== req.user!.email) {
+    res.status(403).json({ message: "You can only delete your own equipment." });
+    return;
+  }
+
+  await equipmentCollection().deleteOne({ _id: id });
+  res.json({ message: "Equipment deleted." });
 });
 
 export default router;
