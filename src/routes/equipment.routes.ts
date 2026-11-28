@@ -15,6 +15,80 @@ const router = Router();
 
 const equipmentCollection = () => getDB().collection<Equipment>("equipment");
 
+function toNumber(value: unknown): number | null {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (text === "") return null;
+  const number = Number(text);
+  return Number.isFinite(number) ? number : null;
+}
+
+function toText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+// Public: approved equipment with search, filters, sorting and pagination
+router.get("/", async (req, res) => {
+  const search = toText(req.query.search);
+  const category = toText(req.query.category);
+  const rentalType = toText(req.query.rentalType);
+  const availability = toText(req.query.availability);
+  const sort = toText(req.query.sort);
+  const minPrice = toNumber(req.query.minPrice);
+  const maxPrice = toNumber(req.query.maxPrice);
+
+  const conditions: Document[] = [{ status: "approved" }];
+
+  if (search) {
+    const pattern = new RegExp(escapeRegex(search), "i");
+    conditions.push({
+      $or: [{ name: pattern }, { location: pattern }, { category: pattern }],
+    });
+  }
+  if (category) conditions.push({ category: category as Category });
+  if (rentalType) conditions.push({ rentalType: rentalType as RentalType });
+  if (minPrice !== null) conditions.push({ rentalPrice: { $gte: minPrice } });
+  if (maxPrice !== null) conditions.push({ rentalPrice: { $lte: maxPrice } });
+  if (availability === "available") {
+    conditions.push({ availableQuantity: { $gt: 0 } });
+  }
+  if (availability === "unavailable") {
+    conditions.push({ availableQuantity: { $lte: 0 } });
+  }
+
+  const filter: Filter<Equipment> = { $and: conditions };
+
+  const sortBy: Sort =
+    sort === "price-asc"
+      ? { rentalPrice: 1, createdAt: -1 }
+      : sort === "price-desc"
+        ? { rentalPrice: -1, createdAt: -1 }
+        : { createdAt: -1 };
+
+  const page = Math.max(1, Math.floor(toNumber(req.query.page) ?? 1));
+  const limit = Math.min(
+    24,
+    Math.max(1, Math.floor(toNumber(req.query.limit) ?? 9))
+  );
+
+  const [items, total] = await Promise.all([
+    equipmentCollection()
+      .find(filter)
+      .sort(sortBy)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .toArray(),
+    equipmentCollection().countDocuments(filter),
+  ]);
+
+  res.json({
+    items,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  });
+});
+
 // Owner adds new equipment (starts as pending)
 router.post("/", verifyToken, verifyOwner, async (req, res) => {
   const result = validateEquipmentInput(req.body ?? {});
