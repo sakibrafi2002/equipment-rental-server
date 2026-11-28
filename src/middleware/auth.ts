@@ -76,3 +76,4 @@ function requireRoles(...roles: Role[]) {
 export const verifyRenter = requireRoles("customer");
 export const verifyOwner = requireRoles("owner");
 export const verifyAdmin = requireRoles("admin");
+export const verifyOwnerOrAdmin = requireRoles("owner", "admin");

@@ -1,9 +1,15 @@
 import { Router } from "express";
-import { ObjectId } from "mongodb";
+import { Document, Filter, Sort } from "mongodb";
 import { getDB } from "../config/db";
-import { verifyToken, verifyOwner } from "../middleware/auth";
+import {
+  verifyToken,
+  verifyOwner,
+  verifyOwnerOrAdmin,
+} from "../middleware/auth";
 import { validateEquipmentInput } from "../utils/validate-equipment";
-import { Equipment } from "../types/equipment";
+import { escapeRegex } from "../utils/escape-regex";
+import { toObjectId } from "../utils/object-id";
+import { Equipment, Category, RentalType } from "../types/equipment";
 
 const router = Router();
 
@@ -52,13 +58,13 @@ router.get("/featured", async (_req, res) => {
 
 // Logged-in users: details of one item
 router.get("/:id", verifyToken, async (req, res) => {
-  const id = String(req.params.id);
-  if (!ObjectId.isValid(id)) {
+  const id = toObjectId(req.params.id);
+  if (!id) {
     res.status(400).json({ message: "Invalid equipment id." });
     return;
   }
 
-  const item = await equipmentCollection().findOne({ _id: new ObjectId(id) });
+  const item = await equipmentCollection().findOne({ _id: id });
   if (!item) {
     res.status(404).json({ message: "Equipment not found." });
     return;
