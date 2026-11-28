@@ -3,6 +3,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { connectDB } from "./config/db";
 import equipmentRoutes from "./routes/equipment.routes";
+import adminRoutes from "./routes/admin.routes";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -11,6 +12,7 @@ app.use(cors({ origin: process.env.CLIENT_URL }));
 app.use(express.json());
 
 app.use("/api/equipment", equipmentRoutes);
+app.use("/api/admin", adminRoutes);
 
 
 app.get("/", (_req: Request, res: Response) => {
