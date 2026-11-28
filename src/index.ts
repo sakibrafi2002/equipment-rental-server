@@ -2,7 +2,7 @@ import "dotenv/config";
 import express, { Request, Response } from "express";
 import cors from "cors";
 import { connectDB } from "./config/db";
-import testRoutes from "./routes/test.routes";
+import equipmentRoutes from "./routes/equipment.routes";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -10,7 +10,8 @@ const port = process.env.PORT || 5000;
 app.use(cors({ origin: process.env.CLIENT_URL }));
 app.use(express.json());
 
-app.use("/api/test", testRoutes);
+app.use("/api/equipment", equipmentRoutes);
+
 
 app.get("/", (_req: Request, res: Response) => {
   res.send("Equipment Rental Platform server is running");
